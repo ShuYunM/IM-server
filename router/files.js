@@ -25,6 +25,8 @@ module.exports = function (app) {
   app.post("/files/upload", upload.array("file", 10), function (req, res, next) {
     // req.files 是 `files` 文件数组的信息
     //线上的也就是服务器中的图片的绝对地址
+    console.log("111", req.files);
+    // __dirname.replace("router", "") + req.files[0].pat
     res.send({
       msg: "success",
       data: req.files,

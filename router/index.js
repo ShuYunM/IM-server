@@ -92,4 +92,29 @@ module.exports = function (app) {
   app.post("/index/getfriend", (req, res) => {
     getFriend.getFriend(req, res);
   });
+  // 获取最后一条消息
+  app.post("/index/lastmsg", (req, res) => {
+    getFriend.getLastMsg(req, res);
+  });
+  // 获取未读消息数
+  app.post("/index/unread", (req, res) => {
+    getFriend.getunRead(req, res);
+  });
+  // 点击查看后变为已读
+  app.post("/index/readmsg", (req, res) => {
+    getFriend.updateMsg(req, res);
+  });
+
+  // 获取群列表
+  app.post("/index/grouplist", (req, res) => {
+    getFriend.getGroup(req, res);
+  });
+  // 按要求获取群消息
+  app.post("/index/groupmsg", (req, res) => {
+    getFriend.getGroupMsg(req, res);
+  });
+  // 群消息的状态修改
+  app.post("/index/updategroupmsg", (req, res) => {
+    getFriend.updateGroupMsg(req, res);
+  });
 };

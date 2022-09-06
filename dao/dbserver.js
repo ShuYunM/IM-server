@@ -6,6 +6,7 @@ const Friend = dbmodel.model("Friend");
 const Group = dbmodel.model("Group");
 const GroupUser = dbmodel.model("GroupUser");
 const Message = dbmodel.model("Message");
+const GroupMsg = dbmodel.model("GroupMsg");
 const jwt = require("../dao/jwt");
 
 // 新建用户
@@ -424,10 +425,10 @@ exports.deleteFriend = function (data, res) {
 };
 
 // 按要求获取用户列表
-exports.getUsers = function (uid, state, res) {
+exports.getUsers = function (data, res) {
   let query = Friend.find({});
   // 查询条件
-  query.where({ userID: uid, state: state });
+  query.where({ userID: data.uid, state: data.state });
   // 查找friendID  关联的user对象
   query.populate("friendID");
   // 排序方式，-1倒序，1相反
@@ -450,4 +451,132 @@ exports.getUsers = function (uid, state, res) {
     .catch((err) => {
       res.send({ status: 500 });
     });
+};
+
+// 按要求获取一对一消息
+exports.getOneMsg = function (data, res) {
+  let query = Message.findOne({});
+  // 查询条件
+  query.where({
+    $or: [
+      { userID: data.uid, friendID: data.fid },
+      { userID: data.fid, friendID: data.uid },
+    ],
+  });
+  // 查找friendID  关联的user对象
+  query.populate("friendID");
+  // 排序方式，-1倒序，1相反
+  query.sort({ time: -1 });
+  // 查询结果
+  query
+    .exec()
+    .then(function (e) {
+      let result = {
+        message: e.message, //通过关联可以取得user表中的_id
+        time: e.time,
+        types: e.types,
+      };
+
+      res.send({ status: 200, result });
+    })
+    .catch((err) => {
+      res.send({ status: 500 });
+    });
+};
+
+// 汇总一对一消息未读数
+exports.getunRead = function (data, res) {
+  let wherestr = { userID: data.uid, friendID: data.fid, state: 1 };
+  Message.countDocuments(wherestr, (err, result) => {
+    if (err) {
+      res.send({ status: 500 });
+    } else {
+      res.send({ status: 200, result });
+    }
+  });
+};
+
+// 点击查看后变为已读
+exports.updateMsg = function (data, res) {
+  let wherestr = { userID: data.uid, friendID: data.fid, state: 1 };
+  let updatestr = { state: 0 };
+  Message.updateMany(wherestr, updatestr, (err, result) => {
+    if (err) {
+      res.send({ status: 500 });
+    } else {
+      res.send({ status: 200, result });
+    }
+  });
+};
+
+// 获取群列表
+exports.getGroup = function (data, res) {
+  let query = GroupUser.find({});
+  // 查询条件
+  query.where({ userID: data.uid });
+  // 查找friendID  关联的user对象
+  query.populate("GroupID");
+  // 排序方式，-1倒序，1相反
+  query.sort({ lastTime: -1 });
+  // 查询结果
+  query
+    .exec()
+    .then(function (e) {
+      let result = e.map((item) => {
+        return {
+          gid: item.GroupID._id, //通过关联可以取得群表中的_id
+          name: item.GroupID.name,
+          imgurl: item.GroupID.imgurl,
+          markname: item.name,
+          lastTime: item.lastTime,
+          notice: item.GroupID.notice,
+          tip: item.tip,
+        };
+      });
+      res.send({ status: 200, result });
+    })
+    .catch((err) => {
+      res.send({ status: 500 });
+    });
+};
+
+// 按要求获取群消息
+exports.getGroupMsg = function (data, res) {
+  let query = GroupMsg.findOne({});
+  // 查询条件
+  query.where({ GroupID: data.gid });
+  // 查找friendID  关联的user对象
+  query.populate("friendID");
+  // 查找friendID  关联的user对象
+  query.populate("userID");
+  // 排序方式，-1倒序，1相反
+  query.sort({ time: -1 });
+  // 查询结果
+  query
+    .exec()
+    .then(function (e) {
+      let result = {
+        message: e.message, //通过关联可以取得user表中的_id
+        time: e.time,
+        types: e.types,
+        name: e.userID.name, //最后一条消息的发送者
+      };
+      res.send({ status: 200, result });
+    })
+    .catch((err) => {
+      res.send({ status: 500 });
+    });
+};
+
+// 群消息的状态修改
+exports.updateGroupMsg = function (data, res) {
+  let wherestr = { GroupID: data.gid, userID: data.uid };
+  let updatestr = { tip: 0 };
+  Message.updateMany(wherestr, updatestr, (err, result) => {
+    if (err) {
+      res.send({ status: 500 });
+    } else {
+      res.send({ status: 200, result });
+    }
+  });
 };

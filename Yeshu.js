@@ -4,6 +4,7 @@ const app = express();
 // 引入跨域处理
 const cors = require("cors");
 app.use(cors());
+app.use("/data", express.static(__dirname + "/data"));
 
 // 引入前端req.body插件
 const bodyParser = require("body-parser");
@@ -19,7 +20,6 @@ app.use((req, res, next) => {
     // 处理token匹配
     let token = req.body.token;
     let tokenMatch = jwt.verifyToken(token);
-
     if (tokenMatch) {
       // token正确
       next();
