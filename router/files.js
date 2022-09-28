@@ -15,9 +15,17 @@ const storage = multer.diskStorage({
   },
   //保存在 destination 中的文件名
   filename: function (req, file, cb) {
-    // 通过正则改变文件名字
-    let type = file.originalname.replace(/.+\./, ".");
-    cb(null, Date.now() + type);
+    // 如果上传的是头像，就覆盖原来的，就不能使用时间戳
+
+    if (req.body.url === "user") {
+      let type = file.originalname.replace(/.+\./, ".");
+      console.log("type", type);
+      cb(null, req.body.name + type);
+    } else {
+      // 通过正则改变文件名字
+      let type = file.originalname.replace(/.+\./, ".");
+      cb(null, Date.now() + type);
+    }
   },
 });
 const upload = multer({ storage: storage });
@@ -25,7 +33,6 @@ module.exports = function (app) {
   app.post("/files/upload", upload.array("file", 10), function (req, res, next) {
     // req.files 是 `files` 文件数组的信息
     //线上的也就是服务器中的图片的绝对地址
-    console.log("111", req.files);
     // __dirname.replace("router", "") + req.files[0].pat
     res.send({
       msg: "success",

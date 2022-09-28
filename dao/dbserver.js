@@ -30,7 +30,7 @@ exports.buildUser = function (name, mail, pwd, res) {
   });
 };
 
-// 匹配用户表验证
+// 注册页匹配用户表验证(邮箱和用户名是否存在)
 exports.countUserValue = function (data, type, res) {
   let wherestr = {};
   wherestr[type] = data;
@@ -44,19 +44,21 @@ exports.countUserValue = function (data, type, res) {
   });
 };
 
-// 用户登录验证
+// 用户登录验证(输入用户名或者密码，查找出对应的密码，进行密码的验证)
 exports.userMatch = function (data, pwd, res) {
   // data可以使用户名，可以使邮箱
   let wherestr = { $or: [{ name: data }, { email: data }] };
   // 输出内容，1代表输出，id默认输出
   let out = { name: 1, imgurl: 1, psw: 1 };
-  User.find(wherestr, out, function (err, result) {
+  User.findOne(wherestr, out, function (err, result) {
     if (err) {
       res.send({ status: 500 });
     } else {
-      if (result === "") {
+      if (!result) {
         res.send({ status: 400, message: "找不到该用户" });
+        return;
       }
+      result = [result];
       result.map((e) => {
         // 将输入密码和解码处对比，返回Boolean
         const pwdMatch = bcrypt.verification(pwd, e.psw);
@@ -73,49 +75,6 @@ exports.userMatch = function (data, pwd, res) {
           res.send({ message: "用户名或密码错误", status: 400 });
         }
       });
-    }
-  });
-};
-
-// 搜索用户
-exports.searchUser = function (data, res) {
-  // 做一个彩蛋，当搜索shu的时候将所有的用户显示
-  let wherestr = {};
-  if (data == "shu") {
-    wherestr = {};
-  } else {
-    // 名字或邮箱,$regex模糊搜索的意思
-    wherestr = { $or: [{ name: { $regex: data } }, { email: { $regex: data } }] };
-  }
-  let out = {
-    name: 1,
-    email: 1,
-    imgurl: 1,
-  };
-  User.find(wherestr, out, function (err, result) {
-    if (err) {
-      res.send({ status: 500 });
-    } else {
-      res.send({ status: 200, result });
-    }
-  });
-};
-
-// 判断搜索出来的用户，是否已经是好友
-exports.isFriend = function (uid, fid, res) {
-  let wherestr = { userID: uid, friendID: fid, state: 0 };
-  // 寻找一条，也可以用前面的匹配个数来判断
-  Friend.findOne(wherestr, function (err, result) {
-    if (err) {
-      res.send({ status: 500 });
-    } else {
-      if (result) {
-        // 是好友
-        res.send({ status: 200, result, message: 1 });
-      } else {
-        // 不是好友
-        res.send({ status: 400, message: 0 });
-      }
     }
   });
 };
@@ -144,20 +103,57 @@ exports.searchGroup = function (data, res) {
   });
 };
 
-// 判断是否在群内
-exports.isInGroup = function (uid, gid) {
-  let wherestr = { userID: uid, GroupID: gid };
+// 搜索用户
+exports.searchUser = function (data, res) {
+  // 做一个彩蛋，当搜索shu的时候将所有的用户显示
+  let wherestr = {};
+  if (data == "shu") {
+    wherestr = {};
+  } else {
+    // 名字或邮箱,$regex模糊搜索的意思
+    wherestr = { $or: [{ name: { $regex: data } }, { email: { $regex: data } }] };
+  }
+  let out = {
+    name: 1,
+    email: 1,
+    imgurl: 1,
+  };
+  const datas = {
+    userList: [],
+    groupList: [],
+  };
+  User.find(wherestr, out, function (err, result) {
+    if (err) {
+      // res.send({ status: 500 });
+    } else {
+      // res.send({ status: 200, result });
+      datas.userList = result;
+      Group.find(wherestr, out, function (errs, results) {
+        if (errs) {
+          res.send({ status: 500, message: "获取不到群" });
+        } else {
+          datas.groupList = results;
+          res.send({ status: 200, datas });
+        }
+      });
+    }
+  });
+};
+
+// 判断搜索出来的用户，是否已经是好友
+exports.isFriend = function (uid, fid, res) {
+  let wherestr = { userID: uid, friendID: fid, state: 0 };
   // 寻找一条，也可以用前面的匹配个数来判断
-  GroupUser.findOne(wherestr, function (err, result) {
+  Friend.findOne(wherestr, function (err, result) {
     if (err) {
       res.send({ status: 500 });
     } else {
       if (result) {
-        // 在群内
-        res.send({ status: 200, result });
+        // 是好友
+        res.send({ status: 200, result, message: 1 });
       } else {
-        // 不在群内
-        res.send({ status: 400 });
+        // 不是好友
+        res.send({ status: 400, message: 0 });
       }
     }
   });
@@ -178,9 +174,10 @@ exports.userDetial = function (id, res) {
 };
 
 // 用户信息修改
-function update(data, update, res) {
+function update(data, updatestr, res) {
   // 根据id修改数据findByIdAndUpdate
-  User.updateOne(data.id, update, function (err, results) {
+  console.log("修改数据");
+  User.updateOne({ _id: data }, updatestr, function (err, results) {
     if (err) {
       res.send({ status: 500 });
     } else {
@@ -195,9 +192,11 @@ exports.userUpdate = function (data, res) {
     name: "用户名",
     email: "邮箱",
     pwd: "密码",
+    phone: "手机号",
   };
   // 判断是否有密码
-  if (typeof data.pwd !== "undefined") {
+
+  if (data.type === "pwd") {
     // 有密码进行匹配
     User.find({ _id: data.id }, { psw: 1 }, function (err, result) {
       if (err) {
@@ -206,13 +205,15 @@ exports.userUpdate = function (data, res) {
         if (result === "") {
           res.send({ status: 400, message: "找不到该用户" });
         }
+
         result.map((e) => {
-          // 将输入密码和解码处对比，返回Boolean
+          // 将输入旧密码密码和解码处对比，返回Boolean
           const pwdMatch = bcrypt.verification(data.pwd, e.psw);
+
           if (pwdMatch) {
             // 密码验证成功
             // 如果修改密码先加密
-            if (data.type == "pwd") {
+            if (data.type === "pwd") {
               let password = bcrypt.encryption(data.data);
               updatestr["psw"] = password;
               update(data.id, updatestr, res);
@@ -239,7 +240,7 @@ exports.userUpdate = function (data, res) {
         });
       }
     });
-  } else if (data.type === "name") {
+  } else if (data.type === "name" || data.type === "email" || data.type === "phone") {
     // 如果是用户名先进行匹配
     updatestr[data.type] = data.data;
     // 获取元素个数的方法，包括自己，wherestr为需要匹配的内容
@@ -248,7 +249,6 @@ exports.userUpdate = function (data, res) {
         res.send({ status: 500 });
       } else {
         // 没有匹配项，可以修改
-        console.log("result", result);
         if (result === 0) {
           console.log("updatestr", updatestr);
           update(data.id, updatestr, res);
@@ -258,17 +258,15 @@ exports.userUpdate = function (data, res) {
       }
     });
   } else {
+    // 其他的不管有没有都可以更新
     updatestr[data.type] = data.data;
     // 获取元素个数的方法，包括自己，wherestr为需要匹配的内容
-    User.countDocuments(updatestr, function (err, result) {
+    User.findOne({ _id: data.id }, function (err, result) {
       if (err) {
         res.send({ status: 500 });
       } else {
         // 没有匹配项，可以修改
-        if (result === 0) {
-          update(data.id, updatestr, res);
-        }
-        res.send({ status: 300, result, message: `${types[data.type]}已存在` });
+        update(data.id, updatestr, res);
       }
     });
   }
@@ -360,9 +358,13 @@ exports.insertMsg = function (uid, fid, msg, types, res) {
   let message = new Message(data);
   message.save(function (err, result) {
     if (err) {
-      res.send({ status: 500 });
+      if (res) {
+        res.send({ status: 500 });
+      }
     } else {
-      res.send({ status: 200, result, message: "发送消息" });
+      if (res) {
+        res.send({ status: 200, result, message: "发送消息" });
+      }
     }
   });
 };
@@ -444,6 +446,8 @@ exports.getUsers = function (data, res) {
           markname: itme.markname,
           imgurl: itme.friendID.imgurl,
           lastTime: itme.lastTime,
+          state: itme.state,
+          type: 0,
         };
       });
       res.send({ status: 200, result });
@@ -476,7 +480,6 @@ exports.getOneMsg = function (data, res) {
         time: e.time,
         types: e.types,
       };
-
       res.send({ status: 200, result });
     })
     .catch((err) => {
@@ -486,7 +489,7 @@ exports.getOneMsg = function (data, res) {
 
 // 汇总一对一消息未读数
 exports.getunRead = function (data, res) {
-  let wherestr = { userID: data.uid, friendID: data.fid, state: 1 };
+  let wherestr = { userID: data.fid, friendID: data.uid, state: 1 };
   Message.countDocuments(wherestr, (err, result) => {
     if (err) {
       res.send({ status: 500 });
@@ -505,6 +508,53 @@ exports.updateMsg = function (data, res) {
       res.send({ status: 500 });
     } else {
       res.send({ status: 200, result });
+    }
+  });
+};
+
+// 新建群
+exports.createGroup = function (data, res) {
+  return new Promise((resolve, reject) => {
+    let groupData = {
+      userID: data.uid,
+      name: data.groupname,
+      imgurl: data.imgurl,
+      time: new Date(),
+    };
+    const group = new Group(groupData);
+    group.save((err, result) => {
+      if (err) {
+        reject({ status: 500 });
+      } else {
+        resolve(result);
+      }
+    });
+  })
+    .then((value) => {
+      for (let index = 0; index < data.userid.length; index++) {
+        // 添加新成员及自己到群，需要在前端将自己uid push到userid数组中
+        let udata = {
+          GroupID: value._id, //群id
+          userID: data.userid[index], //用户id
+          time: new Date(), //加入时间
+          lastTime: new Date(), //最后通讯时间
+        };
+        this.insertGroupUser(udata, res);
+      }
+      res.send({ status: 200, message: "创建成功" });
+    })
+    .catch((err) => {
+      res.send(err);
+    });
+};
+// 添加群成员
+exports.insertGroupUser = function (data, res) {
+  let groupuser = new GroupUser(data);
+  groupuser.save(function (err, result) {
+    if (err) {
+      res.send({ status: 500 });
+    } else {
+      console.log("添加群成员成功");
     }
   });
 };
@@ -531,6 +581,7 @@ exports.getGroup = function (data, res) {
           lastTime: item.lastTime,
           notice: item.GroupID.notice,
           tip: item.tip,
+          type: 1,
         };
       });
       res.send({ status: 200, result });
@@ -577,6 +628,66 @@ exports.updateGroupMsg = function (data, res) {
       res.send({ status: 500 });
     } else {
       res.send({ status: 200, result });
+    }
+  });
+};
+
+// 分页获取一对一聊天数据
+exports.msg = function (data, res) {
+  let skipNum = data.page * data.pageSize;
+  let query = Message.find({});
+  // 查询条件
+  query.where({
+    $or: [
+      { userID: data.uid, friendID: data.fid },
+      { userID: data.fid, friendID: data.uid },
+    ],
+  });
+  // 查找friendID  关联的user对象
+  query.populate("userID");
+  // 跳过的条数
+  query.skip(skipNum);
+  // 每页多少条
+  query.limit(data.pageSize);
+  // 排序方式，-1倒序，1相反
+  query.sort({ time: -1 });
+  // 查询结果
+  query
+    .exec()
+    .then(function (e) {
+      let result = e.map((item) => {
+        return {
+          id: item._id, //通过关联可以取得user表中的_id
+          message: item.message,
+          types: item.types,
+          fromname: item.userID.name, //最后一条消息的发送者
+          fromid: item.userID._id,
+          time: item.time,
+          imgurl: item.userID.imgurl, //发送者头像
+        };
+      });
+      res.send({ status: 200, result });
+    })
+    .catch((err) => {
+      res.send({ status: 500 });
+    });
+};
+
+// 判断是否在群内
+exports.isInGroup = function (uid, gid) {
+  let wherestr = { userID: uid, GroupID: gid };
+  // 寻找一条，也可以用前面的匹配个数来判断
+  GroupUser.findOne(wherestr, function (err, result) {
+    if (err) {
+      res.send({ status: 500 });
+    } else {
+      if (result) {
+        // 在群内
+        res.send({ status: 200, result });
+      } else {
+        // 不在群内
+        res.send({ status: 400 });
+      }
     }
   });
 };

@@ -1,6 +1,10 @@
 const express = require("express");
 const jwt = require("./dao/jwt");
 const app = express();
+// 引入socket.io
+const server = app.listen(8082);
+const io = require("socket.io").listen(server);
+require("./dao/socket")(io);
 // 引入跨域处理
 const cors = require("cors");
 app.use(cors());
@@ -18,7 +22,7 @@ app.use(bodyParser.json());
 app.use((req, res, next) => {
   if (typeof req.body.token !== "undefined" || typeof req.query.token !== "undefined") {
     // 处理token匹配
-    let token = req.body.token;
+    let token = req.body.token || req.query.token;
     let tokenMatch = jwt.verifyToken(token);
     if (tokenMatch) {
       // token正确

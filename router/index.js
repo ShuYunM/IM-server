@@ -14,6 +14,10 @@ let userdetial = require("../server/userdetial");
 let friend = require("../server/friend");
 // 获取好友
 let getFriend = require("../server/index");
+// 聊天页面
+let msg = require("../server/chat");
+// 群
+let group = require("../server/group");
 // 建立路由文件
 module.exports = function (app) {
   // 邮箱测试
@@ -116,5 +120,17 @@ module.exports = function (app) {
   // 群消息的状态修改
   app.post("/index/updategroupmsg", (req, res) => {
     getFriend.updateGroupMsg(req, res);
+  });
+
+  // 聊天
+  // 获取一对一聊天
+  app.post("/msg/getusermsg", (req, res) => {
+    msg.msg(req, res);
+  });
+
+  // 群
+  // 创建群
+  app.post("/group/addgroup", (req, res) => {
+    group.createGroup(req, res);
   });
 };
