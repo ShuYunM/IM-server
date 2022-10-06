@@ -8,7 +8,7 @@ module.exports = function (io) {
       socket.name = id;
       //记录当前登录用户的socket.id，后面可以通过用户id找到对应的socket.id来实现一一对应
       users[id] = socket.id;
-      socket.emit("msg", socket.id);
+      // socket.emit("msg", socket.id);
     });
 
     // 一对一消息发送
@@ -23,6 +23,16 @@ module.exports = function (io) {
       // 给自己也发一份，保证消息栏同时也可以渲染我们自己的消息
       // 当我们给对方发消息时，退出来后，消息也会同步在消息栏
       socket.emit("msg", msg, toid, 1);
+    });
+
+    // 加入群聊
+    socket.on("group", function (gid) {
+      socket.join(gid);
+    });
+
+    // 接收群消息
+    socket.on("groupMsg", function (msg, fromid, gid, user) {
+      socket.to(gid).emit("groupmsg", msg, gid, 0, user);
     });
 
     // 断开

@@ -535,9 +535,10 @@ exports.createGroup = function (data, res) {
         // 添加新成员及自己到群，需要在前端将自己uid push到userid数组中
         let udata = {
           GroupID: value._id, //群id
-          userID: data.userid[index], //用户id
+          userID: data.userid[index].id, //用户id,此时我拿的是当前用户的所有信息
           time: new Date(), //加入时间
           lastTime: new Date(), //最后通讯时间
+          userList: data.userid[index],
         };
         this.insertGroupUser(udata, res);
       }
@@ -559,7 +560,21 @@ exports.insertGroupUser = function (data, res) {
   });
 };
 
-// 获取群列表
+// 搜索当前用户群列表
+// exports.getUserGroup = function (data, res) {
+//   let wherestr = { userID: data.id };
+//   let out = { name: 1, imgurl: 1 };
+//   Group.find(wherestr, out, function (errs, result) {
+//     if (errs) {
+//       res.send({ status: 500, message: "获取不到群" });
+//     } else {
+//       console.log(result);
+//       res.send({ status: 200, result });
+//     }
+//   });
+// };
+
+// 获取群用户列表
 exports.getGroup = function (data, res) {
   let query = GroupUser.find({});
   // 查询条件
@@ -674,8 +689,8 @@ exports.msg = function (data, res) {
 };
 
 // 判断是否在群内
-exports.isInGroup = function (uid, gid) {
-  let wherestr = { userID: uid, GroupID: gid };
+exports.isInGroup = function (data, res) {
+  let wherestr = { userID: data.uid, GroupID: data.gid };
   // 寻找一条，也可以用前面的匹配个数来判断
   GroupUser.findOne(wherestr, function (err, result) {
     if (err) {

@@ -1,6 +1,7 @@
 // 引入附件上传插件
 const multer = require("multer");
 const mkdir = require("../dao/mkdir");
+
 const storage = multer.diskStorage({
   //保存路径
   destination: function (req, file, cb) {
@@ -16,7 +17,6 @@ const storage = multer.diskStorage({
   //保存在 destination 中的文件名
   filename: function (req, file, cb) {
     // 如果上传的是头像，就覆盖原来的，就不能使用时间戳
-
     if (req.body.url === "user") {
       let type = file.originalname.replace(/.+\./, ".");
       console.log("type", type);

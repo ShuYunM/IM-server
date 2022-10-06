@@ -133,4 +133,18 @@ module.exports = function (app) {
   app.post("/group/addgroup", (req, res) => {
     group.createGroup(req, res);
   });
+
+  // 是否在群里
+  app.post("/group/isGroup", (req, res) => {
+    getFriend.isGroup(req, res);
+  });
+
+  // 当前用户群列表
+  app.post("/group/getUserGroup", (req, res) => {
+    group.getUserGroup(req, res);
+  });
+  // 申请入群
+  app.post("/group/insertGroupUser", (req, res) => {
+    group.insertGroupUser(req, res);
+  });
 };

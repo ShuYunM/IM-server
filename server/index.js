@@ -39,3 +39,14 @@ exports.updateGroupMsg = function (req, res) {
   let data = req.body;
   dbserver.updateGroupMsg(data, res);
 };
+// 是否在群里
+exports.isGroup = function (req, res) {
+  let data = req.body;
+  dbserver.isInGroup(data, res);
+};
+
+// 申请入群
+exports.insertGroupUser = function (req, res) {
+  let data = req.body;
+  dbserver.insertGroupUser(data, res);
+};

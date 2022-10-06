@@ -49,18 +49,19 @@ var GroupSchema = new Schema({
 
 //群成员表
 var GroupUserSchema = new Schema({
-  GroupID: { type: Schema.Types.ObjectId, ref: "User" }, //群id
+  GroupID: { type: Schema.Types.ObjectId, ref: "Group" }, //群id
   userID: { type: Schema.Types.ObjectId, ref: "User" }, //用户id
   name: { type: String }, //群内名称
   tip: { type: Number, default: 0 }, //未读消息数
   time: { type: Date }, //加入时间
   lastTime: { type: Date }, //最后通讯时间
   shield: { type: String }, //是否屏蔽群消息(0不屏蔽，1屏蔽)
+  userList: { type: Object },
 });
 
 //群消息表
 var GroupMsgSchema = new Schema({
-  GroupID: { type: Schema.Types.ObjectId, ref: "User" }, //群id
+  GroupID: { type: Schema.Types.ObjectId, ref: "Group" }, //群id
   userID: { type: Schema.Types.ObjectId, ref: "User" }, //用户id
   message: { type: String }, //内容
   types: { type: String }, //内容类型(0文字，1图片链接，2音频链接)
