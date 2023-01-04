@@ -133,7 +133,6 @@ module.exports = function (app) {
   app.post("/group/addgroup", (req, res) => {
     group.createGroup(req, res);
   });
-
   // 是否在群里
   app.post("/group/isGroup", (req, res) => {
     getFriend.isGroup(req, res);
@@ -146,5 +145,9 @@ module.exports = function (app) {
   // 申请入群
   app.post("/group/insertGroupUser", (req, res) => {
     group.insertGroupUser(req, res);
+  });
+  // 分页获取群消息
+  app.post("/group/GroupTalkMsg", (req, res) => {
+    group.GroupTalkMsg(req, res);
   });
 };

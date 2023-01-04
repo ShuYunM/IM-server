@@ -29,7 +29,7 @@ exports.getGroup = function (req, res) {
   let data = req.body;
   dbserver.getGroup(data, res);
 };
-// 按要求获取群消息
+// 按要求获取群最后一条消息
 exports.getGroupMsg = function (req, res) {
   let data = req.body;
   dbserver.getGroupMsg(data, res);
@@ -50,3 +50,10 @@ exports.insertGroupUser = function (req, res) {
   let data = req.body;
   dbserver.insertGroupUser(data, res);
 };
+
+// 群消息分页获取
+exports.GroupTalkMsg = function (req, res) {
+  let data = req.body;
+  dbserver.GroupTalkMsg(data, res);
+};
+

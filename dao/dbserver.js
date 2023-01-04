@@ -457,7 +457,7 @@ exports.getUsers = function (data, res) {
     });
 };
 
-// 按要求获取一对一消息
+// 按要求获取一对一消息(最后一条消息)
 exports.getOneMsg = function (data, res) {
   let query = Message.findOne({});
   // 查询条件
@@ -560,22 +560,9 @@ exports.insertGroupUser = function (data, res) {
   });
 };
 
-// 搜索当前用户群列表
-// exports.getUserGroup = function (data, res) {
-//   let wherestr = { userID: data.id };
-//   let out = { name: 1, imgurl: 1 };
-//   Group.find(wherestr, out, function (errs, result) {
-//     if (errs) {
-//       res.send({ status: 500, message: "获取不到群" });
-//     } else {
-//       console.log(result);
-//       res.send({ status: 200, result });
-//     }
-//   });
-// };
 
 // 获取群用户列表
-exports.getGroup = function (data, res) {
+exports.getGroup = async function (data, res) {
   let query = GroupUser.find({});
   // 查询条件
   query.where({ userID: data.uid });
@@ -584,61 +571,69 @@ exports.getGroup = function (data, res) {
   // 排序方式，-1倒序，1相反
   query.sort({ lastTime: -1 });
   // 查询结果
-  query
-    .exec()
-    .then(function (e) {
-      let result = e.map((item) => {
-        return {
-          gid: item.GroupID._id, //通过关联可以取得群表中的_id
-          name: item.GroupID.name,
-          imgurl: item.GroupID.imgurl,
-          markname: item.name,
-          lastTime: item.lastTime,
-          notice: item.GroupID.notice,
-          tip: item.tip,
-          type: 1,
-        };
-      });
-      res.send({ status: 200, result });
-    })
-    .catch((err) => {
-      res.send({ status: 500 });
-    });
+  const resonpe = await query.exec();
+  if (!resonpe) {
+    res.send({ status: 500 });
+  }
+  let result = resonpe.map((item) => {
+    return {
+      gid: item.GroupID._id, //通过关联可以取得群表中的_id
+      name: item.GroupID.name,
+      imgurl: item.GroupID.imgurl,
+      markname: item.name,
+      lastTime: item.lastTime,
+      notice: item.GroupID.notice,
+      tip: item.tip,
+      type: 1,
+    };
+  });
+  result.forEach(async (item, value) => {
+    // console.log(item);
+    const resw = await this.getGroupMsg(item, res);
+    result[value] = { ...result[value], ...resw };
+    setTimeout(() => {
+      if (value === result.length - 1) {
+        res.send({ status: 200, result });
+      }
+    }, 100);
+  });
 };
 
-// 按要求获取群消息
-exports.getGroupMsg = function (data, res) {
+// 按要求获取群最后一条消息
+exports.getGroupMsg = async function (data, res) {
   let query = GroupMsg.findOne({});
   // 查询条件
   query.where({ GroupID: data.gid });
   // 查找friendID  关联的user对象
-  query.populate("friendID");
+  // query.populate("friendID");
   // 查找friendID  关联的user对象
   query.populate("userID");
   // 排序方式，-1倒序，1相反
   query.sort({ time: -1 });
   // 查询结果
-  query
-    .exec()
-    .then(function (e) {
-      let result = {
-        message: e.message, //通过关联可以取得user表中的_id
-        time: e.time,
-        types: e.types,
-        name: e.userID.name, //最后一条消息的发送者
-      };
-      res.send({ status: 200, result });
-    })
-    .catch((err) => {
-      res.send({ status: 500 });
-    });
+
+  const ress = await query.exec();
+  if (ress === null) {
+    return;
+    // res.send({ status: 500 });
+  }
+  let result = {
+    message: ress.message, //通过关联可以取得user表中的_id
+    time: ress.time,
+    types: ress.types,
+    name: ress.userID.name, //最后一条消息的发送者
+    imgurl: ress.userID.imgurl,
+    tip: ress.tip,
+  };
+  return { message: result.name + " : " + result.message, types: result.types };
+  // res.send({ status: 200, result });
 };
 
 // 群消息的状态修改
 exports.updateGroupMsg = function (data, res) {
   let wherestr = { GroupID: data.gid, userID: data.uid };
   let updatestr = { tip: 0 };
-  Message.updateMany(wherestr, updatestr, (err, result) => {
+  GroupMsg.updateMany(wherestr, updatestr, (err, result) => {
     if (err) {
       res.send({ status: 500 });
     } else {
@@ -688,7 +683,43 @@ exports.msg = function (data, res) {
     });
 };
 
-// 判断是否在群内
+// 分页获取群聊天数据
+exports.GroupTalkMsg = function (data, res) {
+  let skipNum = data.page * data.pageSize;
+  let query = GroupMsg.find({});
+  // 查询条件
+  query.where({ userID: data.uid, GroupID: data.gid });
+  // 查找friendID  关联的user对象
+  query.populate("userID");
+  // 跳过的条数
+  query.skip(skipNum);
+  // 每页多少条
+  query.limit(data.pageSize);
+  // 排序方式，-1倒序，1相反
+  query.sort({ time: -1 });
+  // 查询结果
+  query
+    .exec()
+    .then(function (e) {
+      let result = e.map((item) => {
+        return {
+          id: item._id, //通过关联可以取得user表中的_id
+          message: item.message,
+          types: item.types,
+          fromname: item.userID.name, //最后一条消息的发送者
+          fromid: item.userID._id,
+          time: item.time,
+          imgurl: item.userID.imgurl, //发送者头像
+        };
+      });
+      res.send({ status: 200, result });
+    })
+    .catch((err) => {
+      res.send({ status: 500 });
+    });
+};
+
+// 判断是否在群内(添加群时判断)
 exports.isInGroup = function (data, res) {
   let wherestr = { userID: data.uid, GroupID: data.gid };
   // 寻找一条，也可以用前面的匹配个数来判断
@@ -703,6 +734,45 @@ exports.isInGroup = function (data, res) {
         // 不在群内
         res.send({ status: 400 });
       }
+    }
+  });
+};
+
+// 添加群消息
+exports.createGroupMsg = function (data, res) {
+  let datas = {
+    GroupID: data.gid,
+    userID: data.uid, //用户id
+    message: data.message, //内容
+    types: data.types, //内容类型(0文字，1图片链接，2音频链接)
+    time: new Date(), //发送时间
+    tip: 1, //消息状态(0已读，1未读)
+  };
+  let message = new GroupMsg(datas);
+  message.save(function (err, result) {
+    if (err) {
+      if (res) {
+        res.send({ status: 500 });
+      } else {
+        console.log("失败");
+      }
+    } else {
+      res ? res.send({ status: 200, result, message: "添加群消息成功" }) : console.log("");
+    }
+  });
+};
+
+// 最后通讯时间更新（最后一条消息的时间也可以用做时间？）
+exports.updateGroupTime = function (data) {
+  let wherestr = { GroupID: data.gid };
+  let updatestr = { lastTime: new Date() };
+  // updateMany
+  GroupUser.update(wherestr, updatestr, function (err, result) {
+    if (err) {
+      console.log("更新最后通讯时间出错");
+      // res.send({ status: 500 });
+    } else {
+      // res.send({ status: 200 });
     }
   });
 };

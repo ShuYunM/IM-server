@@ -40,7 +40,7 @@ var MessageSchema = new Schema({
 
 // 群表
 var GroupSchema = new Schema({
-  userID: { type: Schema.Types.ObjectId, ref: "User" }, //用户id
+  userID: { type: Schema.Types.ObjectId, ref: "User" }, //用户id(创建者)
   name: { type: String }, //群名称
   imgurl: { type: String, default: "group.png" }, //群头像
   time: { type: Date }, //创建时间
@@ -52,10 +52,11 @@ var GroupUserSchema = new Schema({
   GroupID: { type: Schema.Types.ObjectId, ref: "Group" }, //群id
   userID: { type: Schema.Types.ObjectId, ref: "User" }, //用户id
   name: { type: String }, //群内名称
-  tip: { type: Number, default: 0 }, //未读消息数
+  tip: { type: Number, default: 0 }, //未读消息数，0已读读，1未读
   time: { type: Date }, //加入时间
   lastTime: { type: Date }, //最后通讯时间
   shield: { type: String }, //是否屏蔽群消息(0不屏蔽，1屏蔽)
+  state: { type: String }, //添加状态(0已经加入群聊，1有申请(待同意)，2表示申请方，对方还未同意)
   userList: { type: Object },
 });
 
@@ -66,6 +67,7 @@ var GroupMsgSchema = new Schema({
   message: { type: String }, //内容
   types: { type: String }, //内容类型(0文字，1图片链接，2音频链接)
   time: { type: Date }, //发送时间
+  tip: { type: Number, default: 0 }, //未读消息数，0已读读，1未读
 });
 // 将数据模型暴露出去,users即为集合名称
 // 如创建的集合名称不带s。则会补上s

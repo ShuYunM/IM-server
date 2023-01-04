@@ -18,10 +18,12 @@ module.exports = function (io) {
       // 存储一对一消息
       dbserver.insertMsg(fromid, toid, msg.message, msg.types);
       if (users[toid]) {
+        // 0发给对方
         socket.to(users[toid]).emit("msg", msg, fromid, 0);
       }
       // 给自己也发一份，保证消息栏同时也可以渲染我们自己的消息
       // 当我们给对方发消息时，退出来后，消息也会同步在消息栏
+      // 1自己也发一份渲染到index
       socket.emit("msg", msg, toid, 1);
     });
 
@@ -32,7 +34,13 @@ module.exports = function (io) {
 
     // 接收群消息
     socket.on("groupMsg", function (msg, fromid, gid, user) {
+      // 更新最后通讯时间
+      dbserver.updateGroupTime({ gid: gid });
+      // 加入到群聊天记录
+      dbserver.createGroupMsg({ gid: gid, uid: fromid, message: msg.message, types: msg.types });
+      // 将除了本身所有的用户未读消息数加1
       socket.to(gid).emit("groupmsg", msg, gid, 0, user);
+      socket.emit("groupmsg", msg, gid, 1, user);
     });
 
     // 断开
